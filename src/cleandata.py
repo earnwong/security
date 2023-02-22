@@ -1,7 +1,9 @@
 import pandas as pd
-import os
 import re
 import numpy as np
+import glob
+import os
+import sys
 
 
 class ValidDomain:
@@ -116,22 +118,60 @@ class Search:
         return self.name_dict
 
 
-def main():
-    # read data
-    # data = pd.read_csv(r'/Users/earnsmacbookair/Desktop/General Workstations 20230207.csv')
-    data = pd.read_csv(r'/Users/earnsmacbookair/Desktop/academicservers.csv')
+def extract(filename):
+    '''
+
+    :param filename: name of the file
+    :return: extracted dataframe
+    '''
+
+    data = pd.read_csv(filename)
     clean = Clean(data)
     cleaned_df = clean.get_df()  # desired dataframe to extract names from
-
     search_data = Search(cleaned_df)
-    search_data.netbios()
-    search_data.dns()
-    dict_list = search_data.ssl()
+    search_data.netbios()  # use netbios method
+    search_data.dns()  # use dns method
+    dict_list = search_data.ssl()  # use ssl method
 
     # make a new column and correlate the host name to the computer names
     cleaned_df['Extracted Hostname'] = ''
     for key in dict_list:
         cleaned_df.loc[cleaned_df.Host == key, 'Extracted Hostname'] = dict_list[key]
+
+    return cleaned_df
+
+
+def main():
+
+    if len(sys.argv) == 1:  # if there is no input, then scan folder
+        print("Scanning for CSV files")
+        filenames = glob.glob('../parsefiles/*.csv', recursive=True)
+
+        new_dataframes = {}  # new dictionary
+        for filename in filenames:  # loop into list of filenames extracted from folder
+            new_dataframes[filename] = extract(filename)
+
+        for name, df in new_dataframes.items():
+            new_filename = "[Extracted] " + os.path.basename(name)
+            df.to_csv('../output/' + new_filename)
+
+    else:
+        list_filenames = sys.argv[1::]
+
+        new_dataframes = {}
+        for filename in list_filenames:
+            if os.path.exists(filename):
+                new_dataframes[filename] = extract(filename)
+            else:
+                print("[ERROR] File not found: " + filename)
+
+        os.makedirs('Parsed Files', exist_ok=True)
+        for name, df in new_dataframes.items():
+            new_filename = "[Extracted] " + os.path.basename(name)
+            df.to_csv('./Parsed Files/' + new_filename)
+
+
+    # cleaned_df.to_csv('/Users/earnsmacbookair/Desktop/tester/Data Output.csv')
 
     # code for when we only want to see how many names have been extracted
     # cleaned_df['Extracted Hostname'].replace('', np.nan, inplace=True)
@@ -139,10 +179,6 @@ def main():
     # os.makedirs('/Users/earnsmacbookair/Desktop/tester', exist_ok=True)
     # df.to_csv('/Users/earnsmacbookair/Desktop/tester/Only Name.csv')
     # print(df)
-
-    os.makedirs('/Users/earnsmacbookair/Desktop/tester', exist_ok=True)
-    cleaned_df.to_csv('/Users/earnsmacbookair/Desktop/tester/Data Output.csv')
-
 
 if __name__ == "__main__":
     main()
