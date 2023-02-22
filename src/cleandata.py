@@ -156,10 +156,9 @@ def main():
             df.to_csv('../output/' + new_filename)
 
     else:
-        list_filenames = sys.argv[1::]
 
         new_dataframes = {}
-        for filename in list_filenames:
+        for filename in sys.argv[1::]:
             if os.path.exists(filename):
                 new_dataframes[filename] = extract(filename)
             else:
