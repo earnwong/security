@@ -1,3 +1,4 @@
+import errno
 import pandas as pd
 import re
 import numpy as np
@@ -120,6 +121,7 @@ class Search:
 
 def extract(filename):
     '''
+    Reads a filename into a pandas dataframe and extracts the hostname
 
     :param filename: name of the file
     :return: extracted dataframe
@@ -141,6 +143,20 @@ def extract(filename):
     return cleaned_df
 
 
+def isreadable(filename):
+    try:
+        with open(filename) as f:
+            s = f.read()
+            print('read', filename)
+    except IOError as x:
+        if x.errno == errno.ENOENT:
+            print(filename, '- does not exist')
+        elif x.errno == errno.EACCES:
+            print(filename, '- cannot be read')
+        else:
+            print(filename, '- some other error')
+
+
 def main():
 
     if len(sys.argv) == 1:  # if there is no input, then scan folder
@@ -160,6 +176,7 @@ def main():
         new_dataframes = {}
         for filename in sys.argv[1::]:
             if os.path.exists(filename):
+                isreadable(filename)
                 new_dataframes[filename] = extract(filename)
             else:
                 print("[ERROR] File not found: " + filename)
@@ -169,9 +186,6 @@ def main():
             new_filename = "[Extracted] " + os.path.basename(name)
             df.to_csv('./Parsed Files/' + new_filename)
 
-
-    # cleaned_df.to_csv('/Users/earnsmacbookair/Desktop/tester/Data Output.csv')
-
     # code for when we only want to see how many names have been extracted
     # cleaned_df['Extracted Hostname'].replace('', np.nan, inplace=True)
     # df = cleaned_df[cleaned_df['Extracted Hostname'].notna()]
@@ -179,5 +193,9 @@ def main():
     # df.to_csv('/Users/earnsmacbookair/Desktop/tester/Only Name.csv')
     # print(df)
 
+    # https://www.novixys.com/blog/python-check-file-can-read-write/#2_Check_if_File_can_be_Read
+
+
 if __name__ == "__main__":
     main()
+
