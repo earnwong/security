@@ -57,10 +57,21 @@ class Search:
         netbios_df = self.df[(self.df['Name'].str.contains("netbios")) & (self.df['Plugin Output'].str.contains("computer name"))]
 
         # regex to find computer names
-        regex = r"[A-Za-z0-9]+-[A-Za-z0-9]+=(computername)|[A-Za-z0-9]+=(computername)"
-
+        regex = r"[A-Za-z0-9]+-[A-Za-z0-9]+=(computername)|[A-Za-z0-9]+=(computername)|[A-Za-z0-9]+-=(computername)"
+        # # extract computer names using the regex
+        # computer_names = netbios_df['Plugin Output'].apply(lambda x: re.search(regex, x.replace(" ", "")).group().replace("=computername", ''))
         # extract computer names using the regex
-        computer_names = netbios_df['Plugin Output'].apply(lambda x: re.search(regex, x.replace(" ", "")).group().replace("=computername", ''))
+
+        def extract_computer_name(x):
+            no_space_x = x.replace(" ", "")
+            match = re.search(regex, no_space_x)
+            if match:
+                return match.group().replace("=computername", '')
+            else:
+                print(f"No match found in: {x}")  # Print the problematic string
+                return None
+
+        computer_names = netbios_df['Plugin Output'].apply(extract_computer_name)
 
         # create a list of tuples from the extracted computer names and the host names
         self.name_dict.update(dict(zip(netbios_df['Host'], computer_names)))
@@ -143,18 +154,18 @@ def extract(filename):
     return cleaned_df
 
 
-def isreadable(filename):
-    try:
-        with open(filename) as f:
-            s = f.read()
-            print('read', filename)
-    except IOError as x:
-        if x.errno == errno.ENOENT:
-            print(filename, '- does not exist')
-        elif x.errno == errno.EACCES:
-            print(filename, '- cannot be read')
-        else:
-            print(filename, '- some other error')
+# def isreadable(filename):
+#     try:
+#         with open(filename) as f:
+#             s = f.read()
+#             print('read', filename)
+#     except IOError as x:
+#         if x.errno == errno.ENOENT:
+#             print(filename, '- does not exist')
+#         elif x.errno == errno.EACCES:
+#             print(filename, '- cannot be read')
+#         else:
+#             print(filename, '- some other error')
 
 
 def main():
@@ -176,7 +187,6 @@ def main():
         new_dataframes = {}
         for filename in sys.argv[1::]:
             if os.path.exists(filename):
-                isreadable(filename)
                 new_dataframes[filename] = extract(filename)
             else:
                 print("[ERROR] File not found: " + filename)
