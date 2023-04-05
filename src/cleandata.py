@@ -1,10 +1,13 @@
 import errno
+from datetime import date
 import pandas as pd
 import re
 import numpy as np
 import glob
 import os
 import sys
+import pymysql
+from sqlalchemy import create_engine
 
 
 class ValidDomain:
@@ -192,8 +195,8 @@ def extract(filename):
 #         else:
 #             print(filename, '- some other error')
 
-
 def main():
+    engine = create_engine('mysql+pymysql://username:password@localhost/extractedcomputernames')
 
     if len(sys.argv) == 1:  # if there is no input, then scan folder
         print("Scanning for CSV files")
@@ -205,30 +208,30 @@ def main():
 
         for name, df in new_dataframes.items():
             new_filename = "[Extracted] " + os.path.basename(name)
+            # add two new columns here, current date and another column for with the path basename
+            df['Date of Extraction'] = date.today()
+            df['Filename'] = os.path.basename(name)
             df.to_csv('../output/' + new_filename)
+            df.to_sql(name='All Extracted Names', con=engine, if_exists='append', index=False)
+            os.remove(name)
 
     else:
 
         new_dataframes = {}
         for filename in sys.argv[1::]:
+            print(sys.argv[1::])
             if os.path.exists(filename):
                 new_dataframes[filename] = extract(filename)
             else:
                 print("[ERROR] File not found: " + filename)
 
-        os.makedirs('Parsed Files', exist_ok=True)
+        os.makedirs('Output', exist_ok=True)
         for name, df in new_dataframes.items():
             new_filename = "[Extracted] " + os.path.basename(name)
-            df.to_csv('./Parsed Files/' + new_filename)
-
-    # code for when we only want to see how many names have been extracted
-    # cleaned_df['Extracted Hostname'].replace('', np.nan, inplace=True)
-    # df = cleaned_df[cleaned_df['Extracted Hostname'].notna()]
-    # os.makedirs('/Users/earnsmacbookair/Desktop/tester', exist_ok=True)
-    # df.to_csv('/Users/earnsmacbookair/Desktop/tester/Only Name.csv')
-    # print(df)
-
-    # https://www.novixys.com/blog/python-check-file-can-read-write/#2_Check_if_File_can_be_Read
+            df['Date of Extraction'] = date.today()
+            df['Filename'] = os.path.basename(name)
+            df.to_csv('./Output/' + new_filename)
+            df.to_sql(name='All Extracted Names', con=engine, if_exists='append', index=False)
 
 
 if __name__ == "__main__":
