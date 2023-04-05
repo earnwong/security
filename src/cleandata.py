@@ -219,7 +219,6 @@ def main():
 
         new_dataframes = {}
         for filename in sys.argv[1::]:
-            print(sys.argv[1::])
             if os.path.exists(filename):
                 new_dataframes[filename] = extract(filename)
             else:
