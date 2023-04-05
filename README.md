@@ -7,10 +7,12 @@
 
 How to use: 
 This command will automatically scan for CSV files in the parsefile folder. 
-python3 cleandata.py
+
+- python3 cleandata.py
 
 This command will scan for specific CSV files in the current directory.
-python3 cleandata.py "example_dataset.csv" 
+
+- python3 cleandata.py "example_dataset.csv" 
 
 
 
