@@ -6,7 +6,6 @@ import numpy as np
 import glob
 import os
 import sys
-import pymysql
 from sqlalchemy import create_engine
 
 
@@ -79,8 +78,9 @@ class Search:
 
         # add a new column called "Extracted Hostnames" and add all of the computer names into the correct row
         self.aggregated_df = netbios_df[['Host', 'Name']]  # only need host and name column
-        self.aggregated_df['Extracted Hostname'] = ''
-        for key in self.name_dict:
+        self.aggregated_df['Extracted Hostname'] = ''  # add a new column called extracted hostname
+
+        for key in self.name_dict:  # loop into the dictionary to put extracted hostnames into correct row
             self.aggregated_df.loc[self.aggregated_df.Host == key, 'Extracted Hostname'] = self.name_dict[key]
 
         return self.name_dict
@@ -100,14 +100,14 @@ class Search:
             "thefollowinghostnamespointtotheremotehost:", "").str.replace("\n-", " ").str.split().apply(
             lambda x: x[0] if x else None)  # if hostname already exists then disregard, if doesn't, then add to dict
 
-        temporary_dict.update(dns_df.set_index('Host').to_dict()['Plugin Output'])  # update the temp dict
-        self.name_dict.update(dns_df.set_index('Host').to_dict()['Plugin Output'])  # update the name dict
+        temporary_dict.update(dns_df.set_index('Host').to_dict()['Plugin Output'])  # update the temp dict (only dns)
+        self.name_dict.update(dns_df.set_index('Host').to_dict()['Plugin Output'])  # update the name dict (overall)
 
         dns_df = dns_df[['Host', 'Name']]
-        for key in temporary_dict:
+        for key in temporary_dict:  # loop into the dictionary to put extracted hostnames into correct row
             dns_df.loc[dns_df.Host == key, 'Extracted Hostname'] = temporary_dict[key]
 
-        self.aggregated_df = pd.concat([self.aggregated_df, dns_df])
+        self.aggregated_df = pd.concat([self.aggregated_df, dns_df])  # concatenate the dns table to the aggregate table
 
         return self.name_dict
 
@@ -156,11 +156,12 @@ class Search:
         return self.name_dict
 
     def aggregate_results(self):
+        # call all of the search methods in order
         self.netbios()
         self.dns()
         self.ssl()
 
-        self.aggregated_df = self.aggregated_df[self.aggregated_df['Extracted Hostname'].notna()]
+        self.aggregated_df = self.aggregated_df[self.aggregated_df['Extracted Hostname'].notna()]  # drop any empty rows
 
         return self.aggregated_df
 
@@ -173,27 +174,34 @@ def extract(filename):
     :return: extracted dataframe
     """
 
-    data = pd.read_csv(filename)
-    clean = Clean(data)
+    data = pd.read_csv(filename)  # read the csv file
+    clean = Clean(data)  # call clean function to clean the data, ready to extract
     cleaned_df = clean.get_df()  # desired dataframe to extract names from
-    search_data = Search(cleaned_df)
-    result_df = search_data.aggregate_results()
+    search_data = Search(cleaned_df)  # put the cleaned data into search class
+    result_df = search_data.aggregate_results()  # call .aggregate_results() method on search_data
 
     return result_df
 
 
-# def isreadable(filename):
-#     try:
-#         with open(filename) as f:
-#             s = f.read()
-#             print('read', filename)
-#     except IOError as x:
-#         if x.errno == errno.ENOENT:
-#             print(filename, '- does not exist')
-#         elif x.errno == errno.EACCES:
-#             print(filename, '- cannot be read')
-#         else:
-#             print(filename, '- some other error')
+def isreadable(filename):
+    """
+    This function attempts the read the file and if the file is in the incorrect format / cannot be read then
+    it will print out the reason.
+
+    :param filename: name of file to read and check
+    :return: null
+    """
+    try:
+        with open(filename) as f:
+            f.read()
+    except IOError as x:
+        if x.errno == errno.ENOENT:
+            print(os.path.basename(filename), '- does not exist')
+        elif x.errno == errno.EACCES:
+            print(os.path.basename(filename), '- cannot be read')
+        else:
+            print(os.path.basename(filename), '- some other error')
+
 
 def main():
     engine = create_engine('mysql+pymysql://username:password@localhost/extractedcomputernames')
@@ -204,6 +212,7 @@ def main():
 
         new_dataframes = {}  # new dictionary
         for filename in filenames:  # loop into list of filenames extracted from folder
+            isreadable(filename)
             new_dataframes[filename] = extract(filename)
 
         for name, df in new_dataframes.items():
@@ -220,6 +229,7 @@ def main():
         new_dataframes = {}
         for filename in sys.argv[1::]:
             if os.path.exists(filename):
+                isreadable(filename)
                 new_dataframes[filename] = extract(filename)
             else:
                 print("[ERROR] File not found: " + filename)
@@ -235,4 +245,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
